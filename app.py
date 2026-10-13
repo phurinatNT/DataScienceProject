@@ -63,8 +63,8 @@ with st.sidebar:
 st.markdown(f'<div class="topline">Hotel cancellation <span>/</span> {page}<b>StayWise · V5</b></div>', unsafe_allow_html=True)
 
 if page == 'ประเมินการจอง':
-    heading('BOOKING RISK ASSESSMENT', 'เข้าใจความเสี่ยงของทุกการจอง<span>.</span>', 'กรอกข้อมูลการจอง เพื่อประเมินแนวโน้มการยกเลิกก่อนวันเข้าพัก')
-    stats([('ข้อมูลหลังลบรายการซ้ำ', '1,050', 'การจอง'), ('อัตรายกเลิกใน Dataset', '23.62%', '248 จาก 1,050 รายการ'), ('โมเดลที่ใช้ประเมิน', 'Decision Tree', '6 Features · ความลึก 3 ระดับ')])
+    heading('BOOKING RISK ASSESSMENT', 'เข้าใจความเสี่ยงของทุกการจอง</span>', 'กรอกข้อมูลการจอง เพื่อประเมินแนวโน้มการยกเลิกก่อนวันเข้าพัก')
+    stats([('ข้อมูลก่อนลบรายการซ้ำ', '1,062', 'การจอง')('ข้อมูลหลังลบรายการซ้ำ', '1,050', 'การจอง'), ('อัตรายกเลิกใน Dataset', '23.62%', '248 จาก 1,050 รายการ'), ('โมเดลที่ใช้ประเมิน', 'Decision Tree', '6 Features')])
     st.write('')
     left, right = st.columns([1.1, 1], gap='large')
     with left:
