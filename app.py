@@ -63,7 +63,7 @@ with st.sidebar:
 st.markdown(f'<div class="topline">Hotel cancellation <span>/</span> {page}<b>StayWise · V5</b></div>', unsafe_allow_html=True)
 
 if page == 'ประเมินการจอง':
-    heading('BOOKING RISK ASSESSMENT', 'เข้าใจความเสี่ยงของทุกการจอง<span>.</span>', 'กรอกข้อมูลการจอง เพื่อประเมินแนวโน้มการยกเลิกก่อนวันเข้าพัก')
+    heading('BOOKING RISK ASSESSMENT', 'เข้าใจความเสี่ยงของทุกการจอง</span>', 'กรอกข้อมูลการจอง เพื่อประเมินแนวโน้มการยกเลิกก่อนวันเข้าพัก')
     stats([('ข้อมูลหลังลบรายการซ้ำ', '1,050', 'การจอง'), ('อัตรายกเลิกใน Dataset', '23.62%', '248 จาก 1,050 รายการ'), ('โมเดลที่ใช้ประเมิน', 'Decision Tree', '6 Features · ความลึก 3 ระดับ')])
     st.write('')
     left, right = st.columns([1.1, 1], gap='large')
@@ -136,7 +136,7 @@ if page == 'ประเมินการจอง':
     st.markdown('<div class="insight"><strong>มัดจำสัมพันธ์กับการยกเลิกอย่างชัดเจนใน Dataset นี้</strong><p>กลุ่มไม่จ่ายมัดจำยกเลิก 38.24% เทียบกับ 9.25% ของกลุ่มที่จ่ายแล้ว ความสัมพันธ์นี้ไม่ได้ยืนยันเหตุและผล</p></div>', unsafe_allow_html=True)
 
 elif page == 'สำรวจข้อมูล':
-    heading('DATASET EXPLORER', 'ภาพรวมการจองโรงแรม<span>.</span>', 'หนึ่งแถวแทนการจองโรงแรมหนึ่งรายการ โดย cancelled เป็นตัวแปรเป้าหมาย')
+    heading('DATASET EXPLORER', 'ภาพรวมการจองโรงแรม</span>', 'หนึ่งแถวแทนการจองโรงแรมหนึ่งรายการ โดย cancelled เป็นตัวแปรเป้าหมาย')
     try:
         raw, data = data_source()
     except (OSError, ValueError) as error:
