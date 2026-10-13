@@ -60,9 +60,9 @@ with st.sidebar:
     page = st.radio('เมนูหลัก', ['ประเมินการจอง', 'สำรวจข้อมูล', 'ผลทดสอบโมเดล'], label_visibility='collapsed', key='page')
     st.markdown('<div class="side-note"><small>DATA SCIENCE PROJECT</small><p>จากข้อมูล สู่การวางแผน<br>การจองที่เข้าใจได้</p><span>ภูริณัฐ สมศรี</span></div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="topline">Hotel cancellation <span>/</span> {page}<b>StayWise · V5</b></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="topline">Hotel cancellation <span>/</span> {page}<b>Phurinat104</b></div>', unsafe_allow_html=True)
 
-if page == 'ประเมินการจอง':
+if page == 'การยกเลิกการจองห้องพัก':
     heading('BOOKING RISK ASSESSMENT', 'เข้าใจความเสี่ยงของทุกการจอง</span>', 'กรอกข้อมูลการจอง เพื่อประเมินแนวโน้มการยกเลิกก่อนวันเข้าพัก')
     stats([('ข้อมูลก่อนลบรายการซ้ำ', '1,062', 'รายการ'),('ข้อมูลหลังลบรายการซ้ำ', '1,050', 'รายการ'), ('อัตรายกเลิกใน Dataset', '23.62%', '248 จาก 1,050 รายการ'), ('โมเดลที่ใช้ประเมิน', 'Decision Tree', '6 Features')])
     st.write('')
