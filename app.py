@@ -136,7 +136,7 @@ if page == 'ประเมินการจอง':
     st.markdown('<div class="insight"><strong>มัดจำสัมพันธ์กับการยกเลิกอย่างชัดเจนใน Dataset นี้</strong><p>กลุ่มไม่จ่ายมัดจำยกเลิก 38.24% เทียบกับ 9.25% ของกลุ่มที่จ่ายแล้ว ความสัมพันธ์นี้ไม่ได้ยืนยันเหตุและผล</p></div>', unsafe_allow_html=True)
 
 elif page == 'สำรวจข้อมูล':
-    heading('DATASET EXPLORER', 'ภาพรวมการจองโรงแรม<span>.</span>', 'หนึ่งแถวแทนการจองโรงแรมหนึ่งรายการ โดย cancelled เป็นตัวแปรเป้าหมาย')
+    heading('DATASET EXPLORER', 'ภาพรวมการจองโรงแรม</span>', 'หนึ่งแถวแทนการจองโรงแรมหนึ่งรายการ โดย cancelled เป็นตัวแปรเป้าหมาย')
     try:
         raw, data = data_source()
     except (OSError, ValueError) as error:
