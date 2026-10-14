@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import pandas as pd
 import streamlit as st
 from model_utils import load_model, predict
@@ -20,6 +21,15 @@ def data_source():
 @st.cache_data
 def model_source():
     return load_model()
+
+@st.cache_data
+def training_results():
+    """โหลดค่า CV F1 จากผลการทดลอง Decision Tree และ KNN"""
+    path = ROOT / 'gridsearch_results.json'
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
 
 try:
     model = model_source()
@@ -186,13 +196,32 @@ lead_days สูงสุด 182.4 วันยังเก็บไว้ เ�
 
 else:
     heading('MODEL EVALUATION', 'ทำนายได้ดีแค่ไหน<span>?</span>', 'ผลทดลองใหม่จากไฟล์แนบ แยก Test ออกจากการฝึกและเลือกพารามิเตอร์')
-    stats([('Train', '840', '80% ของข้อมูล'), ('Test', '210', '20% · ยกเลิกจริง 50 รายการ'), ('Validation', '5-Fold', 'Stratified · เลือกตาม F1')])
+    training = training_results()
+    cv_scores = {}
+    if training:
+        cv_scores = {
+            name: details['cv_mean_f1']
+            for name, details in training.get('models', {}).items()
+            if 'cv_mean_f1' in details
+        }
+    cv_average = sum(cv_scores.values()) / len(cv_scores) if cv_scores else None
+    selected_cv = cv_scores.get(training.get('selected_by_cv')) if training else None
+    stats([
+        ('Train', '840', '80% ของข้อมูล'),
+        ('Test', '210', '20% · ยกเลิกจริง 50 รายการ'),
+        ('ค่าเฉลี่ย CV F1 รวม', f'{cv_average * 100:.2f}%' if cv_average is not None else '—', 'เฉลี่ยจาก Decision Tree และ KNN'),
+        ('โมเดลที่เลือก', training.get('selected_by_cv', 'Decision Tree') if training else 'Decision Tree', f'CV F1 {selected_cv * 100:.2f}%' if selected_cv is not None else 'เลือกตาม F1'),
+    ])
     st.write('')
     with st.container(border=True):
         st.subheader('เปรียบเทียบผลบนชุด Test')
-        scores = pd.DataFrame([['Decision Tree — ใช้ในแอป', '62.38%', '34.07%', '62.00%', '43.97%'], ['KNN', '73.81%', '40.74%', '22.00%', '28.57%'], ['ทายว่าไม่ยกเลิกทุกคน', '76.19%', '—', '0.00%', '0.00%']], columns=['โมเดล', 'Accuracy', 'Precision', 'Recall', 'F1'])
+        scores = pd.DataFrame([
+            ['Decision Tree — ใช้ในแอป', '53.41%', '62.38%', '34.07%', '62.00%', '43.97%'],
+            ['KNN', '35.11%', '73.81%', '40.74%', '22.00%', '28.57%'],
+            ['ทายว่าไม่ยกเลิกทุกคน', '—', '76.19%', '—', '0.00%', '0.00%'],
+        ], columns=['โมเดล', 'CV F1 เฉลี่ย', 'Accuracy', 'Precision', 'Recall', 'F1'])
         readable_table(scores)
-        st.caption('Precision, Recall และ F1 เป็นค่าของกลุ่ม cancelled = 1')
+        st.caption('CV F1 คือค่าเฉลี่ยจาก Stratified 5-Fold บน Train ส่วน Precision, Recall และ F1 เป็นค่าของกลุ่ม cancelled = 1 บน Test')
     a, b = st.columns(2, gap='large')
     with a, st.container(border=True):
         st.subheader('Confusion Matrix: Decision Tree')
