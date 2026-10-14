@@ -209,7 +209,6 @@ else:
     stats([
         ('Train', '840', '80% ของข้อมูล'),
         ('Test', '210', '20% · ยกเลิกจริง 50 รายการ'),
-        ('ค่าเฉลี่ย CV F1 รวม', f'{cv_average * 100:.2f}%' if cv_average is not None else '—', 'เฉลี่ยจาก Decision Tree และ KNN'),
         ('โมเดลที่เลือก', training.get('selected_by_cv', 'Decision Tree') if training else 'Decision Tree', f'CV F1 {selected_cv * 100:.2f}%' if selected_cv is not None else 'เลือกตาม F1'),
     ])
     st.write('')
