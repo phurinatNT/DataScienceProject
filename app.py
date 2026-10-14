@@ -217,7 +217,6 @@ else:
         scores = pd.DataFrame([
             ['Decision Tree — ใช้ในแอป', '53.41%', '62.38%', '34.07%', '62.00%', '43.97%'],
             ['KNN', '35.11%', '73.81%', '40.74%', '22.00%', '28.57%'],
-            ['ทายว่าไม่ยกเลิกทุกคน', '—', '76.19%', '—', '0.00%', '0.00%'],
         ], columns=['โมเดล', 'CV F1 เฉลี่ย', 'Accuracy', 'Precision', 'Recall', 'F1'])
         readable_table(scores)
         st.caption('CV F1 คือค่าเฉลี่ยจาก Stratified 5-Fold บน Train ส่วน Precision, Recall และ F1 เป็นค่าของกลุ่ม cancelled = 1 บน Test')
