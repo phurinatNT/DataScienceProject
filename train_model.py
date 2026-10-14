@@ -1,111 +1,282 @@
 import json
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+
+from sklearn.model_selection import (
+    train_test_split,
+    StratifiedKFold,
+    GridSearchCV
+)
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, confusion_matrix
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix
 )
 
-# กำหนดไฟล์ข้อมูลและโฟลเดอร์บันทึกโมเดล
-SOURCE = Path(__file__).resolve().parent / 'hotel_dataset.xlsx'
-OUT = Path(__file__).resolve().parent
 
-# อ่านข้อมูลจาก Excel และลบแถวที่ซ้ำกันทุกคอลัมน์
-d = pd.read_excel(SOURCE, sheet_name='Raw_Data').drop_duplicates()
+# ==================================================
+# 1. อ่านและทำความสะอาดข้อมูล
+# ==================================================
 
-# แบ่ง Features เป็นตัวเลขและหมวดหมู่ ไม่ใช้ booking_id
-num = ['lead_days', 'nights', 'guests', 'special_requests']
-cat = ['deposit_paid', 'room_type']
+def load_data(source):
+    # อ่าน Excel และลบแถวซ้ำ
+    d = pd.read_excel(
+        source,
+        sheet_name='Raw_Data'
+    ).drop_duplicates().copy()
 
-# ตัดช่องว่างและปรับตัวพิมพ์ เช่น "YES" กับ "yes" ให้เหมือนกัน
-d[cat] = d[cat].apply(lambda s: s.str.strip().str.lower())
+    num = ['lead_days', 'nights', 'guests', 'special_requests']
+    cat = ['deposit_paid', 'room_type']
 
-# จำนวนคืน คน และคำขอควรเป็นจำนวนเต็ม หากมีทศนิยมให้เป็นค่าว่าง
-for c in num[1:]:
-    d.loc[d[c].notna() & (d[c] % 1 != 0), c] = np.nan
-
-# แบ่ง Train 80% / Test 20% โดยรักษาสัดส่วนกลุ่มยกเลิก
-# xt/yt = ข้อมูลฝึก, xv/yv = ข้อมูลทดสอบ
-xt, xv, yt, yv = train_test_split(
-    d[num + cat],
-    d.cancelled,
-    test_size=.2,
-    stratify=d.cancelled,
-    random_state=42
-)
-
-# เตรียมข้อมูล: ตัวเลขเติม Median / หมวดหมู่เติม Mode แล้วทำ One-Hot
-prep = ColumnTransformer([
-    ('num', SimpleImputer(strategy='median'), num),
-    ('cat', Pipeline([
-        ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('ohe', OneHotEncoder(
-            handle_unknown='ignore',
-            sparse_output=False
-        ))
-    ]), cat)
-])
-
-# รวมการเตรียมข้อมูลกับโมเดล และเรียนรู้จาก Train เท่านั้น
-# จำกัดความลึก 3 ระดับ และเพิ่มน้ำหนักให้คลาสที่มีข้อมูลน้อย
-model = Pipeline([
-    ('prep', prep),
-    ('model', DecisionTreeClassifier(
-        max_depth=3,
-        min_samples_leaf=1,
-        class_weight='balanced',
-        random_state=42
-    ))
-]).fit(xt, yt)
-
-# ดึงโครงสร้างต้นไม้ และทำนายข้อมูล Test
-t = model['model'].tree_
-pred = model.predict(xv)
-
-# เตรียมโครงสร้างโมเดลและคะแนนประเมินสำหรับบันทึกเป็น JSON
-payload = {
-    'features': list(prep.get_feature_names_out()),  # Features หลัง Encoding
-    'left': t.children_left.tolist(),              # โหนดลูกด้านซ้าย
-    'right': t.children_right.tolist(),            # โหนดลูกด้านขวา
-    'feature': t.feature.tolist(),                 # Feature ที่ใช้แบ่งแต่ละโหนด
-    'threshold': t.threshold.tolist(),             # ค่าเกณฑ์แบ่ง
-    'value': t.value[:, 0, :].tolist(),             # ค่าคลาสในแต่ละโหนด
-    'medians': xt[num].median().to_dict(),          # Median จาก Train
-
-    # เปรียบเทียบผลทำนายกับคำตอบจริงของ Test
-    'metrics': {
-        'accuracy': accuracy_score(yv, pred),
-        'precision': precision_score(yv, pred),
-        'recall': recall_score(yv, pred),
-        'f1': f1_score(yv, pred),
-        'confusion': confusion_matrix(yv, pred).tolist()
-    },
-    'method': (
-        'DecisionTreeClassifier; class_weight=balanced; '
-        'max_depth=3; random_state=42; 80/20 stratified split'
+    # ปรับตัวพิมพ์และช่องว่างของหมวดหมู่
+    d[cat] = d[cat].apply(
+        lambda s: s.str.strip().str.lower()
     )
-}
 
-# บันทึกโครงสร้างโมเดลและผลประเมินไว้ใช้ในเว็บ
-(OUT / 'model.json').write_text(
-    json.dumps(payload),
-    encoding='utf-8'
-)
+    # จำนวนคืน คน และคำขอต้องเป็นจำนวนเต็ม
+    for column in num[1:]:
+        d.loc[
+            d[column].notna() & (d[column] % 1 != 0),
+            column
+        ] = np.nan
 
-# เก็บข้อมูลและผลทำนาย Test ในหน่วยความจำสำหรับตรวจสอบ
-# scores เป็นคะแนนโมเดล ยังไม่ใช่โอกาสจริงที่ผ่านการปรับเทียบ
-fixtures = {
-    'rows': prep.transform(xv).tolist(),
-    'scores': model.predict_proba(xv)[:, 1].tolist(),
-    'classes': pred.tolist()
-}
+    # ใช้ Features 6 ตัว ไม่ใช้ booking_id
+    X = d[num + cat]
+    y = d['cancelled']
 
-# แสดงผลประเมินใน Terminal
-print(json.dumps(payload['metrics']))
+    return X, y, num, cat
+
+
+# ==================================================
+# 2. สร้างขั้นตอนเตรียมข้อมูล
+# ==================================================
+
+def make_preprocessor(num, cat, scaling=False):
+    # ตัวเลขเติมค่าว่างด้วย Median
+    numeric_steps = [
+        ('imputer', SimpleImputer(strategy='median'))
+    ]
+
+    # เพิ่ม Scaling เฉพาะ KNN
+    if scaling:
+        numeric_steps.append(
+            ('scaler', StandardScaler())
+        )
+
+    return ColumnTransformer([
+        ('num', Pipeline(numeric_steps), num),
+
+        # หมวดหมู่เติม Mode แล้วทำ One-Hot Encoding
+        ('cat', Pipeline([
+            ('imputer', SimpleImputer(
+                strategy='most_frequent'
+            )),
+            ('ohe', OneHotEncoder(
+                handle_unknown='ignore',
+                sparse_output=False
+            ))
+        ]), cat)
+    ])
+
+
+# ==================================================
+# 3. ฟังก์ชันประเมินผล
+# ==================================================
+
+def evaluate(actual, predicted):
+    # Precision, Recall และ F1 วัดกลุ่มยกเลิก (คลาส 1)
+    return {
+        'accuracy': float(
+            accuracy_score(actual, predicted)
+        ),
+        'precision': float(
+            precision_score(
+                actual, predicted, zero_division=0
+            )
+        ),
+        'recall': float(
+            recall_score(
+                actual, predicted, zero_division=0
+            )
+        ),
+        'f1': float(
+            f1_score(
+                actual, predicted, zero_division=0
+            )
+        ),
+
+        # แถว = จริง / คอลัมน์ = ทำนาย
+        # เรียงเป็น [[TN, FP], [FN, TP]]
+        'confusion': confusion_matrix(
+            actual, predicted, labels=[0, 1]
+        ).tolist()
+    }
+
+
+# ==================================================
+# 4. ขั้นตอนหลัก
+# ==================================================
+
+def main():
+    root = Path(__file__).resolve().parent
+    source = root / 'hotel_dataset.xlsx'
+
+    X, y, num, cat = load_data(source)
+
+    # แบ่ง Train 80% / Test 20% โดยรักษาสัดส่วนคลาส
+    xt, xv, yt, yv = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=y,
+        random_state=42
+    )
+
+    print(f'Train: {len(xt)} รายการ')
+    print(f'Test : {len(xv)} รายการ')
+
+    # แบ่ง Train เป็น 5 ส่วน สลับส่วนตรวจสอบ
+    cv = StratifiedKFold(
+        n_splits=5,
+        shuffle=True,
+        random_state=42
+    )
+
+    # ==============================================
+    # 5. Pipeline และ Grid ของ Decision Tree
+    # ==============================================
+
+    tree_pipeline = Pipeline([
+        ('prep', make_preprocessor(num, cat)),
+        ('model', DecisionTreeClassifier(
+            random_state=42
+        ))
+    ])
+
+    # ทดลองทุกชุดค่าที่เกิดจากการจับคู่พารามิเตอร์
+    tree_grid = {
+        'model__max_depth': [2, 3, 4, 5, None],
+        'model__min_samples_leaf': [1, 5, 10],
+        'model__class_weight': [None, 'balanced']
+    }
+
+    # ==============================================
+    # 6. Pipeline และ Grid ของ KNN
+    # ==============================================
+
+    knn_pipeline = Pipeline([
+        ('prep', make_preprocessor(
+            num, cat, scaling=True
+        )),
+        ('model', KNeighborsClassifier())
+    ])
+
+    knn_grid = {
+        'model__n_neighbors': [3, 5, 7, 9, 11],
+        'model__weights': ['uniform', 'distance'],
+
+        # p=1 คือ Manhattan / p=2 คือ Euclidean
+        'model__p': [1, 2]
+    }
+
+    # ==============================================
+    # 7. Grid Search เฉพาะข้อมูล Train
+    # ==============================================
+
+    searches = {}
+
+    for name, pipeline, grid in [
+        ('Decision Tree', tree_pipeline, tree_grid),
+        ('KNN', knn_pipeline, knn_grid)
+    ]:
+        search = GridSearchCV(
+            estimator=pipeline,
+            param_grid=grid,
+            scoring='f1',       # เลือกตาม F1 ของกลุ่มยกเลิก
+            cv=cv,
+            refit=True,         # ฝึกค่าที่ดีที่สุดด้วย Train ทั้งหมด
+            n_jobs=1,
+            error_score='raise'
+        )
+
+        # Pipeline ถูก fit ใหม่ภายในแต่ละ Training Fold
+        # จึงไม่ใช้ Validation/Test เรียนรู้ค่าเติมหรือ Scaling
+        search.fit(xt, yt)
+        searches[name] = search
+
+        print(f'\n{name}')
+        print('พารามิเตอร์ที่ดีที่สุด:', search.best_params_)
+        print(
+            f'CV F1 เฉลี่ย: {search.best_score_ * 100:.2f}%'
+        )
+
+    # เลือกโมเดลจาก CV ก่อนดูผล Test
+    selected_name = max(
+        searches,
+        key=lambda name: searches[name].best_score_
+    )
+
+    print(f'\nโมเดลที่เลือกจาก CV: {selected_name}')
+
+    # ==============================================
+    # 8. ประเมินโมเดลที่ปรับแล้วบน Test
+    # ==============================================
+
+    results = {}
+
+    for name, search in searches.items():
+        predicted = search.predict(xv)
+        metrics = evaluate(yv, predicted)
+
+        results[name] = {
+            'best_params': search.best_params_,
+            'cv_mean_f1': float(search.best_score_),
+            'test': metrics
+        }
+
+        print(f'\nผล Test ของ {name}')
+        print(f"Accuracy : {metrics['accuracy'] * 100:.2f}%")
+        print(f"Precision: {metrics['precision'] * 100:.2f}%")
+        print(f"Recall   : {metrics['recall'] * 100:.2f}%")
+        print(f"F1       : {metrics['f1'] * 100:.2f}%")
+        print('Confusion Matrix:', metrics['confusion'])
+
+    # ==============================================
+    # 9. บันทึกผลแยกจากโมเดลที่เว็บใช้
+    # ==============================================
+
+    report = {
+        'train_rows': len(xt),
+        'test_rows': len(xv),
+        'selection_metric': 'Mean CV F1 for cancelled=1',
+        'selected_by_cv': selected_name,
+        'models': results
+    }
+
+    output = root / 'gridsearch_results.json'
+    output.write_text(
+        json.dumps(
+            report,
+            ensure_ascii=False,
+            indent=2
+        ),
+        encoding='utf-8'
+    )
+
+    print(f'\nบันทึกผลที่ {output.name}')
+    print('model.json ของเว็บไม่ได้ถูกเขียนทับ')
+
+
+# ฝึกเมื่อรันไฟล์นี้โดยตรงเท่านั้น
+if __name__ == '__main__':
+    main()
