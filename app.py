@@ -215,7 +215,7 @@ else:
     with st.container(border=True):
         st.subheader('เปรียบเทียบผลบนชุด Test')
         scores = pd.DataFrame([
-            ['Decision Tree — ใช้ในแอป', '53.41%', '62.38%', '34.07%', '62.00%', '43.97%'],
+            ['Decision Tree ', '53.41%', '62.38%', '34.07%', '62.00%', '43.97%'],
             ['KNN', '35.11%', '73.81%', '40.74%', '22.00%', '28.57%'],
         ], columns=['โมเดล', 'CV F1 เฉลี่ย', 'Accuracy', 'Precision', 'Recall', 'F1'])
         readable_table(scores)
